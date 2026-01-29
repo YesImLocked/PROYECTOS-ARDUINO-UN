@@ -1,0 +1,194 @@
+import pygame
+import serial
+import sys
+
+# --- CONFIGURACIÓN DE TU CANCIÓN ---
+ARCHIVO_MP3 = "cancion.mp3"  # <--- TU ARCHIVO
+BPM = 133                    # <--- VELOCIDAD DE LA CANCIÓN (Beats por minuto)
+OFFSET = 2000                # <--- Delay inicial para que te prepares (ms)
+
+# --- CONFIGURACIÓN ARDUINO ---
+PUERTO = 'COM3'  # <--- REVISÁ TU PUERTO
+BAUDIOS = 9600
+
+# Colores
+NEGRO = (20, 20, 20)
+BLANCO = (255, 255, 255)
+GRIS = (100, 100, 100)
+ROJO = (255, 50, 50)     # Nota 0
+VERDE = (50, 255, 50)    # Nota 1
+AZUL = (50, 50, 255)     # Nota 2
+OR0 = (255, 215, 0)      # Hit perfecto
+
+# --- LA PARTITURA (EL MAPA) ---
+# 0=Izq, 1=Centro, 2=Der, 3=Silencio (Espacio vacío)
+# Podés editar esto para crear tu propia melodía
+# Riff de Seven Nation Army (Simulado)
+# 0=Verde, 1=Rojo, 2=Azul, 3=Silencio
+partitura = [
+    0, 3, 3, 3,    # DUM (Largo)
+    0, 3, 2, 3,    # Dum-DUM
+    0, 3, 3, 3,    # DUM
+    1, 3, 3, 3,    # DUM (Cambio nota)
+    2, 3, 3, 3,    # DUM
+    1, 3, 3, 3,    # DUM
+    0, 3, 3, 3, 3, 3, 3, 3 # Duuuum (Final largo)
+] * 10 # Repetir 10 veces# Lo multiplicamos por 5 para que dure más
+
+# Inicializar Pygame
+pygame.init()
+pygame.mixer.init() # Motor de audio
+ANCHO = 400
+ALTO = 600
+pantalla = pygame.display.set_mode((ANCHO, ALTO))
+pygame.display.set_caption("Arduino Hero: Rhythm Edition 🎵")
+reloj = pygame.time.Clock()
+fuente = pygame.font.SysFont("Arial", 40, bold=True)
+
+# Cargar Música
+try:
+    pygame.mixer.music.load(ARCHIVO_MP3)
+except:
+    print(f"ERROR: No encuentro '{ARCHIVO_MP3}'. Poné un mp3 en la carpeta.")
+    sys.exit()
+
+# Inicializar Serial
+try:
+    ser = serial.Serial(PUERTO, BAUDIOS, timeout=0.05)
+except:
+    print("ERROR: Arduino no conectado.")
+    # sys.exit() # Descomentá si querés que se cierre si no hay Arduino
+
+# Variables Matemáticas para el Ritmo
+fps = 60
+velocidad_bajada = 6 # Qué tan rápido caen (px por frame)
+distancia_meta = 550 # Dónde está la línea de golpe
+# Calculamos cuánto tarda una nota en caer desde arriba hasta la línea
+tiempo_caida = (distancia_meta / velocidad_bajada) * (1000/fps) 
+# Calculamos cada cuánto hay un beat en milisegundos
+ms_por_beat = 60000 / BPM 
+
+notas_en_pantalla = []
+indice_partitura = 0
+ultimo_beat = 0
+puntaje = 0
+combo = 0
+multiplicador = 1
+
+# --- ARRANCAR MÚSICA ---
+tiempo_inicio = pygame.time.get_ticks() + OFFSET
+pygame.mixer.music.play()
+jugando = True
+
+print("¡A ROCKEAR!")
+
+while jugando:
+    tiempo_actual = pygame.time.get_ticks()
+    
+    # 1. EVENTOS
+    for evento in pygame.event.get():
+        if evento.type == pygame.QUIT:
+            jugando = False
+
+    # 2. SPAWNER (CREADOR DE NOTAS SINCRONIZADO)
+    # Si la música ya debería haber arrancado el siguiente beat...
+    if tiempo_actual > tiempo_inicio + (indice_partitura * ms_por_beat):
+        if indice_partitura < len(partitura):
+            nota_valor = partitura[indice_partitura]
+            
+            # Si no es un silencio (3), creamos la nota
+            if nota_valor != 3:
+                # Posiciones X: 70, 200, 330
+                pos_x = 70 + (nota_valor * 130) 
+                color = [ROJO, VERDE, AZUL][nota_valor]
+                
+                # CREAMOS LA NOTA
+                # Truco: La creamos "arriba de todo" (Y=-50) 
+                # para que llegue a la meta justo con el ritmo visual
+                notas_en_pantalla.append({
+                    'carril': nota_valor,
+                    'x': pos_x,
+                    'y': -50,
+                    'color': color,
+                    'activa': True
+                })
+            
+            indice_partitura += 1
+        else:
+            # Se terminó la partitura
+            if len(notas_en_pantalla) == 0:
+                print("¡Tema terminado!")
+                jugando = False
+
+    # 3. LEER ARDUINO
+    accion = None
+    if ser.in_waiting > 0:
+        try:
+            linea = ser.readline().decode('utf-8').strip()
+            if linea == "ACCION_1": accion = 0
+            elif linea == "ACCION_2": accion = 1
+            elif linea == "ACCION_3": accion = 2
+        except: pass
+
+    # 4. ACTUALIZAR POSICIONES Y COLISIONES
+    for nota in notas_en_pantalla[:]:
+        nota['y'] += velocidad_bajada
+        
+        # Miss (Se pasó de largo)
+        if nota['y'] > ALTO + 20 and nota['activa']:
+            notas_en_pantalla.remove(nota)
+            combo = 0
+            multiplicador = 1
+            print("Miss...")
+
+    # 5. LOGICA DE GOLPE
+    if accion is not None:
+        hit = False
+        for nota in notas_en_pantalla:
+            if nota['activa'] and nota['carril'] == accion:
+                # Ventana de Hit: entre 500 y 600 px
+                if 500 < nota['y'] < 600:
+                    notas_en_pantalla.remove(nota)
+                    hit = True
+                    combo += 1
+                    if combo > 10: multiplicador = 2
+                    if combo > 20: multiplicador = 3
+                    if combo > 30: multiplicador = 4
+                    puntaje += (10 * multiplicador)
+                    break 
+        
+        if not hit:
+            combo = 0
+            multiplicador = 1
+
+    # 6. DIBUJAR
+    pantalla.fill(NEGRO)
+    
+    # Rieles
+    pygame.draw.line(pantalla, GRIS, (135, 0), (135, ALTO), 2)
+    pygame.draw.line(pantalla, GRIS, (265, 0), (265, ALTO), 2)
+    
+    # Línea de Meta (Se ilumina con el beat)
+    grosor_meta = 3
+    if (tiempo_actual // (ms_por_beat/2)) % 2 == 0: 
+        color_meta = BLANCO 
+    else: 
+        color_meta = GRIS
+    pygame.draw.line(pantalla, color_meta, (0, 550), (ANCHO, 550), grosor_meta)
+
+    # Notas
+    for nota in notas_en_pantalla:
+        pygame.draw.circle(pantalla, nota['color'], (nota['x'], int(nota['y'])), 30)
+        # Centro brillante
+        pygame.draw.circle(pantalla, BLANCO, (nota['x'], int(nota['y'])), 15)
+
+    # UI
+    txt_puntaje = fuente.render(f"{puntaje}", True, BLANCO)
+    txt_combo = fuente.render(f"x{multiplicador}", True, OR0 if multiplicador > 1 else GRIS)
+    pantalla.blit(txt_puntaje, (20, 20))
+    pantalla.blit(txt_combo, (ANCHO - 80, 20))
+
+    pygame.display.flip()
+    reloj.tick(fps)
+
+pygame.quit()
