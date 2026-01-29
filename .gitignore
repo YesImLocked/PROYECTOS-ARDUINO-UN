@@ -1,0 +1,12 @@
+# Claude Code
+.claude/
+
+# VS Code workspace
+*.code-workspace
+
+# Archivos basura
+nul
+
+# Sistema
+.DS_Store
+Thumbs.db
