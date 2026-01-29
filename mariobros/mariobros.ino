@@ -174,7 +174,7 @@ int melodySize = sizeof(melody) / sizeof(melody[0]);
 // Melodía 2: Super Mario Bros Underground Theme
 int melody2[] = {
   NOTE_C4, NOTE_C5, NOTE_A4, NOTE_A5,
-  NOTE_AS4, NOTE_AS5, NOTE_REST,
+  NOTE_AS4, NOTE_AS4, NOTE_REST,
   NOTE_REST,
 
   NOTE_C4, NOTE_C5, NOTE_A4, NOTE_A5,
