@@ -171,6 +171,75 @@ int noteDurations[] = {
 
 int melodySize = sizeof(melody) / sizeof(melody[0]);
 
+// Melodía 2: Super Mario Bros Underground Theme
+int melody2[] = {
+  NOTE_C4, NOTE_C5, NOTE_A4, NOTE_A5,
+  NOTE_AS4, NOTE_AS5, NOTE_REST,
+  NOTE_REST,
+
+  NOTE_C4, NOTE_C5, NOTE_A4, NOTE_A5,
+  NOTE_AS4, NOTE_AS5, NOTE_REST,
+  NOTE_REST,
+
+  NOTE_F4, NOTE_F5, NOTE_D4, NOTE_D5,
+  NOTE_DS4, NOTE_DS5, NOTE_REST,
+  NOTE_REST,
+
+  NOTE_F4, NOTE_F5, NOTE_D4, NOTE_D5,
+  NOTE_DS4, NOTE_DS5, NOTE_REST,
+  NOTE_REST,
+
+  NOTE_DS5, NOTE_CS5, NOTE_D5,
+  NOTE_CS5, NOTE_DS5,
+  NOTE_DS5, NOTE_GS4,
+  NOTE_G4, NOTE_CS5,
+
+  NOTE_C5, NOTE_FS4, NOTE_F4, NOTE_E4,
+  NOTE_AS4, NOTE_A4,
+  NOTE_GS4, NOTE_DS4, NOTE_B4,
+  NOTE_AS4, NOTE_A4, NOTE_GS4,
+
+  NOTE_REST, NOTE_REST, NOTE_REST
+};
+
+int noteDurations2[] = {
+  8, 8, 8, 8,
+  8, 8, 8,
+  8,
+
+  8, 8, 8, 8,
+  8, 8, 8,
+  8,
+
+  8, 8, 8, 8,
+  8, 8, 8,
+  8,
+
+  8, 8, 8, 8,
+  8, 8, 8,
+  8,
+
+  6, 6, 6,
+  6, 6,
+  6, 8,
+  8, 6,
+
+  6, 8, 8, 8,
+  6, 8,
+  6, 8, 8,
+  8, 8, 8,
+
+  2, 2, 2
+};
+
+int melody2Size = sizeof(melody2) / sizeof(melody2[0]);
+
+// Variables para el scroll
+String scrollText = "   Arduino rocks!!   ";
+int scrollPos = 0;
+unsigned long lastScrollTime = 0;
+const int scrollDelay = 300; // Velocidad del scroll en milisegundos
+
 void setup() {
   lcd.begin(16, 2);
   pinMode(buzzerPin, OUTPUT);
@@ -189,37 +258,62 @@ void setup() {
   delay(1000);
 }
 
-void loop() {
-  // Mostrar mensaje fijo
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(" Estas");
-  lcd.setCursor(0, 1);
-  lcd.print("escuchando");
-  delay(1000);
+// Función para actualizar el scroll
+void updateScroll() {
+  if (millis() - lastScrollTime >= scrollDelay) {
+    lcd.setCursor(0, 0);
 
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(" Mario Bros!!!");
+    // Mostrar 16 caracteres desde la posición actual
+    String displayText = "";
+    for (int i = 0; i < 16; i++) {
+      displayText += scrollText.charAt((scrollPos + i) % scrollText.length());
+    }
+    lcd.print(displayText);
 
-  // Reproducir la melodía completa
-  for (int thisNote = 0; thisNote < melodySize; thisNote++) {
-    // Calcular duración de la nota
-    // Tempo: 200 BPM (rápido como Mario Bros)
-    int noteDuration = 1000 / noteDurations[thisNote];
-
-    if (melody[thisNote] != NOTE_REST) {
-      tone(buzzerPin, melody[thisNote], noteDuration * 0.9);
+    // Avanzar posición
+    scrollPos++;
+    if (scrollPos >= scrollText.length()) {
+      scrollPos = 0;
     }
 
-    // Pausa entre notas
-    int pauseBetweenNotes = noteDuration * 1.30;
-    delay(pauseBetweenNotes);
+    lastScrollTime = millis();
+  }
+}
 
-    // Detener el tono
+// Función para reproducir una melodía
+void playMelody(int* notes, int* durations, int size, String message) {
+  lcd.clear();
+  lcd.setCursor(0, 1);
+  lcd.print(message);
+
+  for (int thisNote = 0; thisNote < size; thisNote++) {
+    int noteDuration = 1000 / durations[thisNote];
+
+    if (notes[thisNote] != NOTE_REST) {
+      tone(buzzerPin, notes[thisNote], noteDuration * 0.9);
+    }
+
+    unsigned long noteStartTime = millis();
+    int pauseBetweenNotes = noteDuration * 1.30;
+
+    while (millis() - noteStartTime < pauseBetweenNotes) {
+      updateScroll();
+    }
+
     noTone(buzzerPin);
   }
 
-  // Pausa antes de repetir
-  delay(2000);
+  // Pausa después de la melodía
+  unsigned long pauseStart = millis();
+  while (millis() - pauseStart < 2000) {
+    updateScroll();
+  }
+}
+
+void loop() {
+  // Reproducir primera melodía (Main Theme)
+  playMelody(melody, noteDurations, melodySize, " Main Theme!");
+
+  // Reproducir segunda melodía (Underground)
+  playMelody(melody2, noteDurations2, melody2Size, " Underground!");
 }

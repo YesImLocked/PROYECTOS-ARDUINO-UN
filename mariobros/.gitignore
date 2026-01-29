@@ -1,0 +1,85 @@
+# Claude Code
+.claude/
+../.claude/
+
+# Arduino
+*.hex
+*.elf
+*.eep
+*.lss
+*.map
+*.sym
+*.o
+*.a
+*.d
+*.lst
+
+# Archivos basura
+nul
+../nul
+
+# Build directories
+build/
+*.build/
+
+# VS Code
+.vscode/*
+!.vscode/arduino.json
+!.vscode/c_cpp_properties.json
+!.vscode/settings.json
+.vscode/ipch/
+
+# IDE - VSCode
+.history
+*.code-workspace
+
+# Arduino IDE
+*.autosave
+__vm/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Python (if using any Arduino scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Node modules (if using any web-based tools)
+node_modules/
+
+# Installation scripts output
+install-*.log

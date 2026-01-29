@@ -1,0 +1,6 @@
+{
+    "sketch": "mariobros.ino",
+    "board": "arduino:avr:uno",
+    "port": "COM3",
+    "configuration": "cpu=atmega328"
+}
